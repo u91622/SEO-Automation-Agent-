@@ -1,5 +1,5 @@
 {
-    "name": "Notion SEO & Grammar Agent",
+    "name": "Notion SEO & Grammar Agent (Slack)",
     "nodes": [
         {
             "parameters": {
@@ -257,20 +257,26 @@
         },
         {
             "parameters": {
-                "chatId": "YOUR_CHAT_ID",
+                "channelId": {
+                    "__rl": true,
+                    "value": "YOUR_CHANNEL_ID",
+                    "mode": "list",
+                    "cachedResultName": "general"
+                },
                 "text": "={{ '🎉 新文章已就緒！\\n標題：' + $json.title + '\\nSEO 分數：' + $json.analysis.score }}",
-                "additionalFields": {}
+                "otherOptions": {}
             },
-            "id": "telegram-success",
-            "name": "Telegram (Success)",
-            "type": "n8n-nodes-base.telegram",
-            "typeVersion": 1.1,
+            "id": "slack-success",
+            "name": "Slack (Success)",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.1,
             "position": [
                 1920,
                 100
             ],
+            "webhookId": "2bfb7b3b-31d7-463e-b873-1f19c1e40a02",
             "credentials": {
-                "telegramApi": {
+                "slackApi": {
                     "id": "",
                     "name": ""
                 }
@@ -278,20 +284,25 @@
         },
         {
             "parameters": {
-                "chatId": "YOUR_CHAT_ID",
+                "channelId": {
+                    "__rl": true,
+                    "value": "YOUR_CHANNEL_ID",
+                    "mode": "list",
+                    "cachedResultName": "general"
+                },
                 "text": "={{ '⚠️ 文章需修改\\n標題：' + $json.title + '\\nSEO 分數：' + $json.analysis.score + '\\n\\n主要問題：\\n- ' + $json.analysis.issues.join('\\n- ') }}",
-                "additionalFields": {}
+                "otherOptions": {}
             },
-            "id": "telegram-fail",
-            "name": "Telegram (Fail)",
-            "type": "n8n-nodes-base.telegram",
-            "typeVersion": 1.1,
+            "id": "slack-fail",
+            "name": "Slack (Fail)",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.1,
             "position": [
                 2140,
                 380
             ],
             "credentials": {
-                "telegramApi": {
+                "slackApi": {
                     "id": "",
                     "name": ""
                 }
@@ -381,7 +392,7 @@
             "main": [
                 [
                     {
-                        "node": "Telegram (Success)",
+                        "node": "Slack (Success)",
                         "type": "main",
                         "index": 0
                     }
@@ -403,7 +414,7 @@
             "main": [
                 [
                     {
-                        "node": "Telegram (Fail)",
+                        "node": "Slack (Fail)",
                         "type": "main",
                         "index": 0
                     }
