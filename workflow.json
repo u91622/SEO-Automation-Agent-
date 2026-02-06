@@ -1,0 +1,414 @@
+{
+    "name": "Notion SEO & Grammar Agent",
+    "nodes": [
+        {
+            "parameters": {
+                "pollTimes": {
+                    "item": [
+                        {
+                            "mode": "everyMinute"
+                        }
+                    ]
+                },
+                "event": "pagedAddedToDatabase"
+            },
+            "id": "notion-trigger",
+            "name": "Notion Trigger",
+            "type": "n8n-nodes-base.notionTrigger",
+            "typeVersion": 1,
+            "position": [
+                380,
+                240
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "block",
+                "operation": "getAll",
+                "blockId": "={{ $json.id }}",
+                "returnAll": true
+            },
+            "id": "get-content",
+            "name": "Get Page Content",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [
+                600,
+                240
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Aggregate all text blocks into a single string for AI analysis\nconst blocks = $input.all();\nlet fullText = \"\";\n\nfor (const block of blocks) {\n  const type = block.json.type;\n  if (block.json[type] && block.json[type].rich_text) {\n    const textObj = block.json[type].rich_text;\n    if (Array.isArray(textObj)) {\n      fullText += textObj.map(t => t.plain_text).join(\"\") + \"\\n\";\n    }\n  }\n}\n\n// Pass metadata from the trigger node (parent page info) if needed, \n// but here we primarily need the text and the original Page ID.\nconst pageId = blocks[0].json.parent.page_id || $node[\"Notion Trigger\"].json.id;\n\nreturn {\n  json: {\n    pageId,\n    fullText,\n    title: $node[\"Notion Trigger\"].json.properties.Name.title[0]?.plain_text || \"Untitled\"\n  }\n};"
+            },
+            "id": "prepare-data",
+            "name": "Prepare Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                820,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.cerebras.ai/v1/chat/completions",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "model",
+                            "value": "gpt-oss-120b"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "={{ [\n  {\"role\": \"system\", \"content\": \"You are an SEO and Grammar expert editing a blog post. Analyze the text. Return ONLY a valid JSON object (no markdown formatting, no code blocks) with the following structure:\\n{\\n  \\\"score\\\": number (0-100),\\n  \\\"issues\\\": [\\\"issue 1\\\", \\\"issue 2\\\"],\\n  \\\"suggestions\\\": [\\\"suggestion 1\\\", \\\"suggestion 2\\\"]\\n}\"}, \n  {\"role\": \"user\", \"content\": $json.fullText}\n] }}"
+                        },
+                        {
+                            "name": "temperature",
+                            "value": 0.2
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "cerebras-ai",
+            "name": "Cerebras AI Analysis",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                1040,
+                240
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const aiContent = $json.choices[0].message.content;\nlet analysis = {};\n\ntry {\n  // Try to parse JSON directly. \n  // Sometimes LLMs wrap in ```json ... ```, so we strip that just in case.\n  const cleanJson = aiContent.replace(/```json/g, '').replace(/```/g, '').trim();\n  analysis = JSON.parse(cleanJson);\n} catch (e) {\n  analysis = { score: 0, issues: [\"JSON Parse Error\"], suggestions: [\"Check AI Output\"] };\n}\n\nreturn {\n  json: {\n    ...$input.first().json, // Keep original pageId, title\n    analysis\n  }\n};"
+            },
+            "id": "parse-response",
+            "name": "Parse Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1260,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.analysis.score }}",
+                            "operation": "largerEqual",
+                            "value2": 80
+                        }
+                    ]
+                }
+            },
+            "id": "check-score",
+            "name": "Check Score",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1480,
+                240
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "databasePage",
+                "operation": "update",
+                "pageId": {
+                    "__rl": true,
+                    "value": "={{ $json.pageId }}",
+                    "mode": "id"
+                },
+                "propertiesUi": {
+                    "propertyValues": [
+                        {
+                            "key": "Status|select",
+                            "selectValue": "Ready"
+                        },
+                        {
+                            "key": "SEO Score|number",
+                            "numberValue": "={{ $json.analysis.score }}"
+                        }
+                    ]
+                }
+            },
+            "id": "update-success",
+            "name": "Update Notion (Pass)",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                100
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "databasePage",
+                "operation": "update",
+                "pageId": {
+                    "__rl": true,
+                    "value": "={{ $json.pageId }}",
+                    "mode": "id"
+                },
+                "propertiesUi": {
+                    "propertyValues": [
+                        {
+                            "key": "Status|select",
+                            "selectValue": "Needs Revision"
+                        },
+                        {
+                            "key": "SEO Score|number",
+                            "numberValue": "={{ $json.analysis.score }}"
+                        }
+                    ]
+                }
+            },
+            "id": "update-fail",
+            "name": "Update Notion (Fail)",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                380
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "block",
+                "blockId": {
+                    "__rl": true,
+                    "value": "={{ $json.pageId }}",
+                    "mode": "id"
+                },
+                "blockUi": {
+                    "blockValues": [
+                        {
+                            "type": "heading_2",
+                            "textContent": "🤖 AI Revision Suggestions"
+                        },
+                        {
+                            "type": "paragraph",
+                            "textContent": "={{ $json.analysis.suggestions.join('\\n- ') }}"
+                        }
+                    ]
+                }
+            },
+            "id": "append-suggestions",
+            "name": "Append Suggestions",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [
+                1920,
+                380
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        },
+        {
+            "parameters": {
+                "chatId": "YOUR_CHAT_ID",
+                "text": "={{ '🎉 新文章已就緒！\\n標題：' + $json.title + '\\nSEO 分數：' + $json.analysis.score }}",
+                "additionalFields": {}
+            },
+            "id": "telegram-success",
+            "name": "Telegram (Success)",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                1920,
+                100
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        },
+        {
+            "parameters": {
+                "chatId": "YOUR_CHAT_ID",
+                "text": "={{ '⚠️ 文章需修改\\n標題：' + $json.title + '\\nSEO 分數：' + $json.analysis.score + '\\n\\n主要問題：\\n- ' + $json.analysis.issues.join('\\n- ') }}",
+                "additionalFields": {}
+            },
+            "id": "telegram-fail",
+            "name": "Telegram (Fail)",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                2140,
+                380
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "",
+                    "name": ""
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Notion Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Get Page Content",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Prepare Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Page Content": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Data": {
+            "main": [
+                [
+                    {
+                        "node": "Cerebras AI Analysis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Cerebras AI Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Response": {
+            "main": [
+                [
+                    {
+                        "node": "Check Score",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Score": {
+            "main": [
+                [
+                    {
+                        "node": "Update Notion (Pass)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Update Notion (Fail)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Notion (Pass)": {
+            "main": [
+                [
+                    {
+                        "node": "Telegram (Success)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Notion (Fail)": {
+            "main": [
+                [
+                    {
+                        "node": "Append Suggestions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Append Suggestions": {
+            "main": [
+                [
+                    {
+                        "node": "Telegram (Fail)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
