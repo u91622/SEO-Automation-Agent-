@@ -51,7 +51,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const httpResponses = $input.all();\n// Robustly retrieve ALL trigger items to ensure 1-to-1 mapping\nlet triggers = [];\ntry {\n  triggers = $node[\"Notion Trigger\"].all();\n} catch (error) {\n  // Fallback if .all() fails (unlikely in batch, but good for safety)\n  triggers = [$node[\"Notion Trigger\"].json];\n}\n\nconst results = [];\n\nfor (let i = 0; i < httpResponses.length; i++) {\n  const blocks = httpResponses[i].json.results || [];\n  let fullText = \"\";\n\n  // Extract text from blocks\n  for (const block of blocks) {\n    const type = block.type;\n    if (block[type] && block[type].rich_text) {\n      const textContent = block[type].rich_text.map(t => t.plain_text).join(\"\");\n      fullText += textContent + \"\\n\";\n    }\n  }\n  \n  // If text is still empty, add a debug note\n  if (!fullText.trim()) {\n      fullText = \"[WARNING: No text content found. The page might be empty, or contain unsupported block types like Toggles or Nested Columns.]\";\n  }\n\n  // Match with Trigger data by index\n  // Use .json if available, or the item itself\n  const triggerItem = triggers[i] || triggers[0]; \n  const triggerData = triggerItem.json || triggerItem;\n  \n  const pageId = triggerData.id;\n\n  // Dynamic Title Retrieval\n  const properties = triggerData.properties;\n  let title = \"Untitled\";\n  if (properties) {\n    for (const key in properties) {\n      if (properties[key].type === \"title\") {\n        title = properties[key].title[0]?.plain_text || \"Untitled\";\n        break;\n      }\n    }\n  }\n\n  results.push({\n    json: {\n      pageId,\n      fullText,\n      title\n    }\n  });\n}\n\nreturn results;"
+                "jsCode": "// Access the current item's blocks (from HTTP Request)\nconst blocks = $json.results || [];\nlet fullText = \"\";\n\n// Supported block types for content extraction\nconst supportedTypes = ['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bulleted_list_item', 'numbered_list_item', 'quote', 'callout'];\n\nfor (const block of blocks) {\n  const type = block.type;\n  if (supportedTypes.includes(type) && block[type].rich_text) {\n    const textContent = block[type].rich_text.map(t => t.plain_text).join(\"\");\n    fullText += textContent + \"\\n\";\n  }\n}\n\n// Retrieve ID and Title from the PARENT Trigger node (aligned by index automatically by n8n)\nconst triggerItem = $node[\"Notion Trigger\"].json;\nconst pageId = triggerItem.id;\n\n// Dynamic Title Retrieval\nconst properties = triggerItem.properties;\nlet title = \"Untitled\";\nif (properties) {\n  for (const key in properties) {\n    if (properties[key].type === \"title\") {\n      title = properties[key].title[0]?.plain_text || \"Untitled\";\n      break;\n    }\n  }\n}\n\nreturn {\n  json: {\n    pageId,\n    fullText: fullText.trim() || \"[No readable text found. Please ensure content is not in toggles or complex layouts.]\",\n    title,\n    blockCount: blocks.length\n  }\n};"
             },
             "id": "prepare-data",
             "name": "Prepare Data",
@@ -314,11 +314,6 @@
                 [
                     {
                         "node": "Get Page Content (HTTP)",
-                        "type": "main",
-                        "index": 0
-                    },
-                    {
-                        "node": "Prepare Data",
                         "type": "main",
                         "index": 0
                     }
