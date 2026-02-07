@@ -223,6 +223,7 @@
         {
             "parameters": {
                 "resource": "block",
+                "operation": "append",
                 "blockId": {
                     "__rl": true,
                     "value": "={{ $json.pageId }}",
