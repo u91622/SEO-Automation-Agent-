@@ -152,7 +152,7 @@
                 "operation": "update",
                 "pageId": {
                     "__rl": true,
-                    "value": "={{ $json.pageId }}",
+                    "value": "={{ $node[\"Parse Response\"].json.pageId }}",
                     "mode": "id"
                 },
                 "propertiesUi": {
@@ -163,7 +163,7 @@
                         },
                         {
                             "key": "SEO Score|number",
-                            "numberValue": "={{ $json.analysis.score }}"
+                            "numberValue": "={{ $node[\"Parse Response\"].json.analysis.score }}"
                         }
                     ]
                 }
@@ -189,7 +189,7 @@
                 "operation": "update",
                 "pageId": {
                     "__rl": true,
-                    "value": "={{ $json.pageId }}",
+                    "value": "={{ $node[\"Parse Response\"].json.pageId }}",
                     "mode": "id"
                 },
                 "propertiesUi": {
@@ -200,7 +200,7 @@
                         },
                         {
                             "key": "SEO Score|number",
-                            "numberValue": "={{ $json.analysis.score }}"
+                            "numberValue": "={{ $node[\"Parse Response\"].json.analysis.score }}"
                         }
                     ]
                 }
@@ -226,7 +226,7 @@
                 "operation": "append",
                 "blockId": {
                     "__rl": true,
-                    "value": "={{ $json.pageId }}",
+                    "value": "={{ $node[\"Parse Response\"].json.pageId }}",
                     "mode": "id"
                 },
                 "blockUi": {
@@ -237,7 +237,7 @@
                         },
                         {
                             "type": "paragraph",
-                            "textContent": "={{ $json.analysis.suggestions.join('\\n- ') }}"
+                            "textContent": "={{ $node[\"Parse Response\"].json.analysis.suggestions.join('\\n- ') }}"
                         }
                     ]
                 }
@@ -265,7 +265,7 @@
                     "mode": "list",
                     "cachedResultName": "general"
                 },
-                "text": "={{ '🎉 新文章已就緒！\\n標題：' + $json.title + '\\nSEO 分數：' + $json.analysis.score }}",
+                "text": "={{ '🎉 新文章已就緒！\\n標題：' + $node[\"Parse Response\"].json.title + '\\nSEO 分數：' + $node[\"Parse Response\"].json.analysis.score }}",
                 "otherOptions": {}
             },
             "id": "slack-success",
@@ -291,7 +291,7 @@
                     "mode": "list",
                     "cachedResultName": "general"
                 },
-                "text": "={{ '⚠️ 文章需修改\\n標題：' + $json.title + '\\nSEO 分數：' + $json.analysis.score + '\\n\\n主要問題：\\n- ' + $json.analysis.issues.join('\\n- ') }}",
+                "text": "={{ '⚠️ 文章需修改\\n標題：' + $node[\"Parse Response\"].json.title + '\\nSEO 分數：' + $node[\"Parse Response\"].json.analysis.score + '\\n\\n主要問題：\\n- ' + $node[\"Parse Response\"].json.analysis.issues.join('\\n- ') }}",
                 "otherOptions": {}
             },
             "id": "slack-fail",
