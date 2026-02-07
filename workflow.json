@@ -29,29 +29,15 @@
         },
         {
             "parameters": {
-                "amount": 5,
-                "unit": "seconds"
-            },
-            "id": "wait-for-data",
-            "name": "Wait for Propagation",
-            "type": "n8n-nodes-base.wait",
-            "typeVersion": 1,
-            "position": [
-                500,
-                240
-            ]
-        },
-        {
-            "parameters": {
-                "resource": "block",
-                "operation": "getAll",
-                "blockId": "={{ $json.id }}",
-                "returnAll": true
+                "method": "GET",
+                "url": "={{ 'https://api.notion.com/v1/blocks/' + $json.id + '/children' }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "notionApi"
             },
             "id": "get-content",
-            "name": "Get Page Content",
-            "type": "n8n-nodes-base.notion",
-            "typeVersion": 2,
+            "name": "Get Page Content (HTTP)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
             "position": [
                 600,
                 240
