@@ -113,7 +113,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const aiContent = $json.choices[0].message.content;\nlet analysis = {};\n\ntry {\n  // Try to parse JSON directly. \n  // Sometimes LLMs wrap in ```json ... ```, so we strip that just in case.\n  const cleanJson = aiContent.replace(/```json/g, '').replace(/```/g, '').trim();\n  analysis = JSON.parse(cleanJson);\n} catch (e) {\n  analysis = { score: 0, issues: [\"JSON Parse Error\"], suggestions: [\"Check AI Output\"] };\n}\n\nreturn {\n  json: {\n    ...$input.first().json, // Keep original pageId, title\n    analysis\n  }\n};"
+                "jsCode": "const aiContent = $json.choices[0].message.content;\nlet analysis = {};\n\ntry {\n  const cleanJson = aiContent.replace(/```json/g, '').replace(/```/g, '').trim();\n  analysis = JSON.parse(cleanJson);\n} catch (e) {\n  analysis = { score: 0, issues: [\"JSON Parse Error\"], suggestions: [\"Check AI Output\"] };\n}\n\n// Retrieve original data (Page ID, Title) from the 'Prepare Data' node\nconst originalData = $node[\"Prepare Data\"].json;\n\nreturn {\n  json: {\n    ...originalData,\n    analysis\n  }\n};"
             },
             "id": "parse-response",
             "name": "Parse Response",
