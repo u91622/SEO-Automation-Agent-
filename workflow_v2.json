@@ -10,7 +10,12 @@
                         }
                     ]
                 },
-                "event": "pagedAddedToDatabase"
+                "event": "pageCreatedInDatabase",
+                "databaseId": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": ""
+                }
             },
             "id": "notion-trigger",
             "name": "Notion Trigger",
@@ -51,7 +56,7 @@
         },
         {
             "parameters": {
-                "jsCode": "// Access the current item's blocks (from HTTP Request)\nconst blocks = $json.results || [];\nlet fullText = \"\";\n\n// Supported block types for content extraction\nconst supportedTypes = ['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bulleted_list_item', 'numbered_list_item', 'quote', 'callout'];\n\nfor (const block of blocks) {\n  const type = block.type;\n  if (supportedTypes.includes(type) && block[type].rich_text) {\n    const textContent = block[type].rich_text.map(t => t.plain_text).join(\"\");\n    fullText += textContent + \"\\n\";\n  }\n}\n\n// Retrieve ID and Title from the PARENT Trigger node (aligned by index automatically by n8n)\nconst triggerItem = $node[\"Notion Trigger\"].json;\nconst pageId = triggerItem.id;\n\n// Dynamic Title Retrieval\nconst properties = triggerItem.properties;\nlet title = \"Untitled\";\nif (properties) {\n  for (const key in properties) {\n    if (properties[key].type === \"title\") {\n      title = properties[key].title[0]?.plain_text || \"Untitled\";\n      break;\n    }\n  }\n}\n\nreturn {\n  json: {\n    pageId,\n    fullText: fullText.trim() || \"[No readable text found. Please ensure content is not in toggles or complex layouts.]\",\n    title,\n    blockCount: blocks.length\n  }\n};"
+                "jsCode": "// Extract all text from various Notion block types\nconst blocks = $json.results || [];\nlet fullText = \"\";\nconst supportedTypes = ['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bulleted_list_item', 'numbered_list_item', 'quote', 'callout', 'to-do'];\n\nfor (const block of blocks) {\n  const type = block.type;\n  if (supportedTypes.includes(type) && block[type].rich_text) {\n    const textContent = block[type].rich_text.map(t => t.plain_text).join(\"\");\n    fullText += textContent + \"\\n\";\n  } else if (type === 'toggle' && block.toggle.rich_text) {\n    fullText += block.toggle.rich_text.map(t => t.plain_text).join(\"\") + \"\\n\";\n  }\n}\n\n// Retrieve ID and Title from the PARENT Trigger node (paired by n8n automatically)\n// This node is executed once PER item passing through it.\nconst triggerItem = $node[\"Notion Trigger\"].json;\nconst pageId = triggerItem.id;\n\n// Dynamic Title Retrieval\nconst properties = triggerItem.properties;\nlet title = \"Untitled\";\nif (properties) {\n  for (const key in properties) {\n    if (properties[key].type === \"title\") {\n      title = properties[key].title[0]?.plain_text || \"Untitled\";\n      break;\n    }\n  }\n}\n\nconst finalContent = fullText.trim();\n\nreturn {\n  json: {\n    pageId,\n    fullText: finalContent || \"[WARNING: No readable text blocks found. Could be due to empty page or unsupported layout items.]\",\n    title,\n    hasContent: !!finalContent\n  }\n};"
             },
             "id": "prepare-data",
             "name": "Prepare Data",
@@ -86,11 +91,7 @@
                         },
                         {
                             "name": "messages",
-                            "value": "={{ [\n  {\"role\": \"system\", \"content\": \"You are an SEO and Grammar expert editing a blog post. Analyze the text. Return ONLY a valid JSON object (no markdown formatting, no code blocks) with the following structure:\\n{\\n  \\\"score\\\": number (0-100),\\n  \\\"issues\\\": [\\\"issue 1\\\", \\\"issue 2\\\"],\\n  \\\"suggestions\\\": [\\\"suggestion 1\\\", \\\"suggestion 2\\\"]\\n}\"}, \n  {\"role\": \"user\", \"content\": $json.fullText}\n] }}"
-                        },
-                        {
-                            "name": "temperature",
-                            "value": 0.2
+                            "value": "={{ [\n  {\"role\": \"system\", \"content\": \"You are an SEO and Grammar expert. Analyze the post text. Return ONLY a JSON object: { \\\"score\\\": number, \\\"issues\\\": string[], \\\"suggestions\\\": string[] }.\" }, \n  {\"role\": \"user\", \"content\": $json.fullText}\n] }}"
                         }
                     ]
                 },
@@ -113,7 +114,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const aiContent = $json.choices[0].message.content;\nlet analysis = {};\n\ntry {\n  const cleanJson = aiContent.replace(/```json/g, '').replace(/```/g, '').trim();\n  analysis = JSON.parse(cleanJson);\n} catch (e) {\n  analysis = { score: 0, issues: [\"JSON Parse Error\"], suggestions: [\"Check AI Output\"] };\n}\n\n// Retrieve original data (Page ID, Title) from the 'Prepare Data' node\nconst originalData = $node[\"Prepare Data\"].json;\n\nreturn {\n  json: {\n    ...originalData,\n    analysis\n  }\n};"
+                "jsCode": "const aiContent = $json.choices[0].message.content;\nlet analysis = {};\ntry {\n  const cleanJson = aiContent.replace(/```json/g, '').replace(/```/g, '').trim();\n  analysis = JSON.parse(cleanJson);\n} catch (e) {\n  analysis = { score: 0, issues: [\"JSON Parse Error\"], suggestions: [\"Check AI Output\"] };\n}\n\n// Carry forward pageId and title from the same run\nconst originalData = $node[\"Prepare Data\"].json;\n\nreturn {\n  json: {\n    ...originalData,\n    analysis\n  }\n};"
             },
             "id": "parse-response",
             "name": "Parse Response",
