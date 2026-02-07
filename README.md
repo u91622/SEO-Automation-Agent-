@@ -52,7 +52,7 @@
 - 確保你有有效的 API Key。
 
 ## 安裝步驟
-1.  匯入 `workflow.json` 到 n8n。
+1.  匯入 `workflow_v2.json` 到 n8n (請下載此新版本以確保 HTTP Request 節點生效)。
 2.  設定 **Credentials**:
     - **Notion Trigger & Nodes**: 選擇 `Notion API`，填入 Integration Token。
     - **Cerebras AI Analysis**: 選擇 `Header Auth`，填入 `Authorization`: `Bearer csk-...`。
