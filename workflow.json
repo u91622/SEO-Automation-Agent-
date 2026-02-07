@@ -237,7 +237,7 @@
                         },
                         {
                             "type": "paragraph",
-                            "textContent": "={{ $node[\"Parse Response\"].json.analysis.suggestions.join('\\n- ') }}"
+                            "textContent": "={{ $node[\"Parse Response\"].json.analysis.suggestions.join('\\n') }}"
                         }
                     ]
                 }
