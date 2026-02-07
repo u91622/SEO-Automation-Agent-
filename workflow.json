@@ -327,6 +327,17 @@
             "main": [
                 [
                     {
+                        "node": "Wait for Propagation",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait for Propagation": {
+            "main": [
+                [
+                    {
                         "node": "Get Page Content",
                         "type": "main",
                         "index": 0
