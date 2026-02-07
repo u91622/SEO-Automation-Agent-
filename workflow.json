@@ -29,6 +29,20 @@
         },
         {
             "parameters": {
+                "amount": 5,
+                "unit": "seconds"
+            },
+            "id": "wait-for-data",
+            "name": "Wait for Propagation",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1,
+            "position": [
+                500,
+                240
+            ]
+        },
+        {
+            "parameters": {
                 "resource": "block",
                 "operation": "getAll",
                 "blockId": "={{ $json.id }}",
