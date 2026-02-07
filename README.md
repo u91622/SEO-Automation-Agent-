@@ -39,7 +39,7 @@
 - **重要**: 記得把你的 Bot 邀請到你想發送通知的 Channel (在 Slack Channel 裡打 `/invite @YourBotName`)。
 
 ### 3. Cerebras API
-- 確保你有有效的 API Key。
+- 點兩下 **Cerebras AI Analysis** 節點，在 Authentication 選擇 `Header Auth`，並填入你的 API Key (Header Name: `Authorization`, Value: `Bearer <YOUR_KEY>`)。(Bearer __YOUR KEY__)(單字與key中間一定要有一個半形空格)
 
 ## 安裝步驟
 1.  匯入 `workflow_v2.json` 到 n8n (請下載此新版本以確保 HTTP Request 節點生效)。
