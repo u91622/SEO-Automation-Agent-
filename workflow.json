@@ -158,8 +158,8 @@
                 "propertiesUi": {
                     "propertyValues": [
                         {
-                            "key": "Status|text",
-                            "textValue": "Ready"
+                            "key": "Status|select",
+                            "selectValue": "Ready"
                         },
                         {
                             "key": "SEO Score|number",
@@ -195,8 +195,8 @@
                 "propertiesUi": {
                     "propertyValues": [
                         {
-                            "key": "Status|text",
-                            "textValue": "Needs Revision"
+                            "key": "Status|select",
+                            "selectValue": "Needs Revision"
                         },
                         {
                             "key": "SEO Score|number",
