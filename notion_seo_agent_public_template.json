@@ -1,0 +1,427 @@
+{
+    "name": "Notion SEO & Grammar Agent (Public Template)",
+    "nodes": [
+        {
+            "parameters": {
+                "pollTimes": {
+                    "item": [
+                        {
+                            "mode": "everyMinute"
+                        }
+                    ]
+                },
+                "databaseId": {
+                    "__rl": true,
+                    "value": "YOUR_NOTION_DATABASE_ID",
+                    "mode": "list",
+                    "cachedResultName": "",
+                    "cachedResultUrl": ""
+                }
+            },
+            "id": "c4f12f00-9660-4c6a-9637-f528652df6a4",
+            "name": "Notion Trigger",
+            "type": "n8n-nodes-base.notionTrigger",
+            "typeVersion": 1,
+            "position": [
+                -768,
+                368
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": "Notion account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "={{ 'https://api.notion.com/v1/blocks/' + $json.id + '/children' }}",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "notionApi",
+                "options": {}
+            },
+            "id": "e2dc6127-6c50-4c27-8731-0a1d6a64d5d7",
+            "name": "Get Page Content (HTTP)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                -544,
+                368
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": "Notion account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extract all text from various Notion block types\nconst blocks = $json.results || [];\nlet fullText = \"\";\nconst supportedTypes = ['paragraph', 'heading_1', 'heading_2', 'heading_3', 'bulleted_list_item', 'numbered_list_item', 'quote', 'callout', 'to-do'];\n\nfor (const block of blocks) {\n  const type = block.type;\n  if (supportedTypes.includes(type) && block[type].rich_text) {\n    const textContent = block[type].rich_text.map(t => t.plain_text).join(\"\");\n    fullText += textContent + \"\\n\";\n  } else if (type === 'toggle' && block.toggle.rich_text) {\n    fullText += block.toggle.rich_text.map(t => t.plain_text).join(\"\") + \"\\n\";\n  }\n}\n\n// Retrieve ID and Title from the PARENT Trigger node (paired by n8n automatically)\n// This node is executed once PER item passing through it.\nconst triggerItem = $node[\"Notion Trigger\"].json;\nconst pageId = triggerItem.id;\n\n// Dynamic Title Retrieval\nconst properties = triggerItem.properties;\nlet title = \"Untitled\";\nif (properties) {\n  for (const key in properties) {\n    if (properties[key].type === \"title\") {\n      title = properties[key].title[0]?.plain_text || \"Untitled\";\n      break;\n    }\n  }\n}\n\nconst finalContent = fullText.trim();\n\nreturn {\n  json: {\n    pageId,\n    fullText: finalContent || \"[WARNING: No readable text blocks found. Could be due to empty page or unsupported layout items.]\",\n    title,\n    hasContent: !!finalContent\n  }\n};"
+            },
+            "id": "e3987f7a-f021-4435-85f3-a4fb15b0abba",
+            "name": "Prepare Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -320,
+                368
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.cerebras.ai/v1/chat/completions",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "model",
+                            "value": "gpt-oss-120b"
+                        },
+                        {
+                            "name": "messages",
+                            "value": "={{ [\n  {\"role\": \"system\", \"content\": \"You are an SEO and Grammar expert. Analyze the post text. Return ONLY a JSON object: { \\\"score\\\": number, \\\"issues\\\": string[], \\\"suggestions\\\": string[] }.\" }, \n  {\"role\": \"user\", \"content\": $json.fullText}\n] }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "bf743762-3fd0-4551-ac19-879be3e79462",
+            "name": "Cerebras AI Analysis",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                -96,
+                368
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "",
+                    "name": "Header Auth account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const aiContent = $json.choices[0].message.content;\nlet analysis = {};\ntry {\n  const cleanJson = aiContent.replace(/```json/g, '').replace(/```/g, '').trim();\n  analysis = JSON.parse(cleanJson);\n} catch (e) {\n  analysis = { score: 0, issues: [\"JSON Parse Error\"], suggestions: [\"Check AI Output\"] };\n}\n\n// Carry forward pageId and title from the same run\nconst originalData = $node[\"Prepare Data\"].json;\n\nreturn {\n  json: {\n    ...originalData,\n    analysis\n  }\n};"
+            },
+            "id": "34f7d8bd-1f55-4944-817b-e0d0c171c485",
+            "name": "Parse Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                128,
+                368
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.analysis.score }}",
+                            "operation": "largerEqual",
+                            "value2": 80
+                        }
+                    ]
+                }
+            },
+            "id": "24b41cd0-53cf-4856-99c1-941e551f7e45",
+            "name": "Check Score",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                352,
+                368
+            ]
+        },
+        {
+            "parameters": {
+                "resource": "databasePage",
+                "operation": "update",
+                "pageId": {
+                    "__rl": true,
+                    "value": "={{ $json.pageId }}",
+                    "mode": "id"
+                },
+                "propertiesUi": {
+                    "propertyValues": [
+                        {
+                            "key": "Status|select",
+                            "selectValue": "Ready"
+                        },
+                        {
+                            "key": "SEO Score|number",
+                            "numberValue": "={{ $json.analysis.score }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "0ff70953-9e0c-4b06-809d-b4156cea0a16",
+            "name": "Update Notion (Pass)",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [
+                560,
+                224
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": "Notion account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "databasePage",
+                "operation": "update",
+                "pageId": {
+                    "__rl": true,
+                    "value": "={{ $json.pageId }}",
+                    "mode": "id"
+                },
+                "propertiesUi": {
+                    "propertyValues": [
+                        {
+                            "key": "Status|select",
+                            "selectValue": "Needs Revision"
+                        },
+                        {
+                            "key": "SEO Score|number",
+                            "numberValue": "={{ $json.analysis.score }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "32652d40-8ed5-4739-9166-820630c7feff",
+            "name": "Update Notion (Fail)",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [
+                560,
+                512
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": "Notion account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "block",
+                "blockId": {
+                    "__rl": true,
+                    "value": "={{ $json.id }}",
+                    "mode": "id"
+                },
+                "blockUi": {
+                    "blockValues": [
+                        {
+                            "type": "heading_2",
+                            "textContent": "🤖 AI Revision Suggestions"
+                        },
+                        {
+                            "textContent": "={{ $('Parse Response').item.json.analysis.suggestions[0] }}{{ $('Parse Response').item.json.analysis.suggestions[1] }}{{ $('Parse Response').item.json.analysis.suggestions[2] }}{{ $('Parse Response').item.json.analysis.suggestions[3] }}{{ $('Parse Response').item.json.analysis.suggestions[4] }}{{ $('Parse Response').item.json.analysis.suggestions[5] }}{{ $('Parse Response').item.json.analysis.suggestions[6] }}{{ $('Parse Response').item.json.analysis.suggestions[7] }}"
+                        }
+                    ]
+                }
+            },
+            "id": "3bc6f60b-f6f6-446d-9dee-87956b789188",
+            "name": "Append Suggestions",
+            "type": "n8n-nodes-base.notion",
+            "typeVersion": 2,
+            "position": [
+                784,
+                512
+            ],
+            "credentials": {
+                "notionApi": {
+                    "id": "",
+                    "name": "Notion account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "text": "={{ '🎉 新文章已就緒！\\n標題：' + $json.title + '\\nSEO 分數：' + $json.analysis.score }}",
+                "otherOptions": {}
+            },
+            "id": "15d3dad8-0c44-4520-9d16-b36fc9f807d4",
+            "name": "Slack (Success)",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.1,
+            "position": [
+                784,
+                224
+            ],
+            "webhookId": ""
+        },
+        {
+            "parameters": {
+                "authentication": "oAuth2",
+                "select": "channel",
+                "channelId": {
+                    "__rl": true,
+                    "value": "YOUR_SLACK_CHANNEL_ID",
+                    "mode": "list",
+                    "cachedResultName": ""
+                },
+                "text": "={{ $('Update Notion (Fail)').item.json.name }}得到{{ $('Update Notion (Fail)').item.json.property_seo_score }}分，狀態為{{ $('Update Notion (Fail)').item.json.property_status }}",
+                "otherOptions": {}
+            },
+            "id": "84702afc-2f81-4a80-a531-f4a66fe6981e",
+            "name": "Slack (Fail)",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.1,
+            "position": [
+                1008,
+                512
+            ],
+            "webhookId": "",
+            "credentials": {
+                "slackOAuth2Api": {
+                    "id": "",
+                    "name": "Slack account"
+                }
+            }
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Notion Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Get Page Content (HTTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Page Content (HTTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Data": {
+            "main": [
+                [
+                    {
+                        "node": "Cerebras AI Analysis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Cerebras AI Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Response": {
+            "main": [
+                [
+                    {
+                        "node": "Check Score",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Score": {
+            "main": [
+                [
+                    {
+                        "node": "Update Notion (Pass)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Update Notion (Fail)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Notion (Pass)": {
+            "main": [
+                [
+                    {
+                        "node": "Slack (Success)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Notion (Fail)": {
+            "main": [
+                [
+                    {
+                        "node": "Append Suggestions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Append Suggestions": {
+            "main": [
+                [
+                    {
+                        "node": "Slack (Fail)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1",
+        "binaryMode": "separate",
+        "availableInMCP": false
+    },
+    "versionId": "b2c9941b-19a1-4916-b2b4-ecf79bad0f38",
+    "meta": {
+        "instanceId": ""
+    },
+    "id": "SSKGRwEBMrEAt3jMSVyCt",
+    "tags": []
+}
