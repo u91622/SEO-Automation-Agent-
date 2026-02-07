@@ -17,10 +17,14 @@
 ### 1. Notion Setup
 - 建立一個新的 Integration: [Notion My Integrations](https://www.notion.so/my-integrations)
 - 在你的 Notion 資料庫頁面，點擊右上角 `...` > `Connections` > `Connect to` > 選擇你的 Integration。
-- **資料庫欄位需求**:
-    - `Status` (Select 類型): 選項需包含 `Ready` 和 `Needs Revision`。
-    - `SEO Score` (Number 類型)。
-    - `Name` (Title 類型，預設就有)。
+### 3. Notion Database 必備欄位 (極重要！)
+為了讓 n8n 正確讀取，您的 Database **必須** 包含以下欄位，且 **名稱必須一模一樣**：
+- **`Name`** (Title 類型): 這是預設的標題欄位，請不要改名，如果改了請在 n8n 裡同步修改。
+- **`Status`** (Select 類型): 選項需包含 `Ready` 和 `Needs Revision`。
+- **`SEO Score`** (Number 類型)。
+
+> [!CAUTION]
+> **常見錯誤**: 如果您把標題欄位改成 `標題` 或 `Title`，n8n 就會報錯 `Cannot read properties of undefined (reading 'Name')`。請務必將其改回 `Name`，或者去 n8n 的 Code Node 修改對應的程式碼。
 
 ### 2. Slack Setup
 - 前往 [Slack API](https://api.slack.com/apps) 建立一個新的 App。
