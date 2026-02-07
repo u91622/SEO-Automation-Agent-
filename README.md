@@ -1,6 +1,6 @@
 # Notion SEO & Grammar Automation Agent
 
-這是一個由 Antigravity IDE 製作的 n8n 自動化工作流。它會監控 Notion 資料庫中的新文章，使用 Cerebras AI (`gpt-oss-120b`) 進行 SEO 與文法檢查，並根據分數自動更新狀態與發送 Slack 通知。
+這是一個n8n 自動化工作流。它會監控 Notion 資料庫中的新文章，使用 Cerebras AI (`gpt-oss-120b`) 進行 SEO 與文法檢查，並根據分數自動更新狀態與發送 Slack 通知。
 
 ## 支援的 Notion 內容格式
 本工作流目前的設計主要針對 **文字型文章** 進行 SEO 分析，支援抓取以下區塊內容：
@@ -8,13 +8,6 @@
 - **Headings** (H1, H2, H3 等標題)
 - **Lists** (列點、編號清單)
 - **Quote** (引言)
-
-> [!NOTE]
-> **目前不支援/會略過的格式**:
-> - **Images/Videos**: 圖片與影片不會被讀取。
-> - **Nested Databases**: 內嵌的資料庫或表格內容。
-> - **复杂排版**: 如多欄位 (Columns) 排版，可能會導致讀取順序不如預期。
-> 
 > **建議**: 請將主要的文字內容直接寫在頁面的第一層級，這樣的 SEO 分析效果最好。
 
 ## 功能流程
@@ -37,9 +30,6 @@
 - **`Name`** (Title 類型): 這是預設的標題欄位，請不要改名，如果改了請在 n8n 裡同步修改。
 - **`Status`** (Select 類型): 選項需包含 `Ready` 和 `Needs Revision`。
 - **`SEO Score`** (Number 類型)。
-
-> [!CAUTION]
-> **常見錯誤**: 如果您把標題欄位改成 `標題` 或 `Title`，n8n 就會報錯 `Cannot read properties of undefined (reading 'Name')`。請務必將其改回 `Name`，或者去 n8n 的 Code Node 修改對應的程式碼。
 
 ### 2. Slack Setup
 - 前往 [Slack API](https://api.slack.com/apps) 建立一個新的 App。
