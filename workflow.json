@@ -51,7 +51,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const blocks = $json.results || [];\nlet fullText = \"\";\n\nfor (const block of blocks) {\n  const type = block.type;\n  if (block[type] && block[type].rich_text) {\n    const textContent = block[type].rich_text.map(t => t.plain_text).join(\"\");\n    fullText += textContent + \"\\n\";\n  }\n}\n\n// Get ID and Title from Trigger Node\nconst triggerData = $node[\"Notion Trigger\"].json;\nconst pageId = triggerData.id;\n\n// Dynamic Title Retrieval\nconst properties = triggerData.properties;\nlet title = \"Untitled\";\nif (properties) {\n  for (const key in properties) {\n    if (properties[key].type === \"title\") {\n      title = properties[key].title[0]?.plain_text || \"Untitled\";\n      break;\n    }\n  }\n}\n\nreturn {\n  json: {\n    pageId,\n    fullText,\n    title\n  }\n};\n"
+                "jsCode": "const httpResponses = $input.all();\nconst triggerItems = $node[\"Notion Trigger\"].json;\n\n// Ensure triggerItems is an array (n8n quirk handling)\nconst triggers = Array.isArray(triggerItems) ? triggerItems : [triggerItems];\n\nconst results = [];\n\nfor (let i = 0; i < httpResponses.length; i++) {\n  const blocks = httpResponses[i].json.results || [];\n  let fullText = \"\";\n\n  // Extract text from blocks\n  for (const block of blocks) {\n    const type = block.type;\n    if (block[type] && block[type].rich_text) {\n      const textContent = block[type].rich_text.map(t => t.plain_text).join(\"\");\n      fullText += textContent + \"\\n\";\n    }\n  }\n\n  // Match with Trigger data by index to get ID and Title\n  const triggerData = triggers[i] || triggers[0]; \n  const pageId = triggerData.id;\n\n  // Dynamic Title Retrieval\n  const properties = triggerData.properties;\n  let title = \"Untitled\";\n  if (properties) {\n    for (const key in properties) {\n      if (properties[key].type === \"title\") {\n        title = properties[key].title[0]?.plain_text || \"Untitled\";\n        break;\n      }\n    }\n  }\n\n  results.push({\n    json: {\n      pageId,\n      fullText,\n      title\n    }\n  });\n}\n\nreturn results;"
             },
             "id": "prepare-data",
             "name": "Prepare Data",
@@ -157,8 +157,8 @@
                 "propertiesUi": {
                     "propertyValues": [
                         {
-                            "key": "Status|select",
-                            "selectValue": "Ready"
+                            "key": "Status|text",
+                            "textValue": "Ready"
                         },
                         {
                             "key": "SEO Score|number",
@@ -194,8 +194,8 @@
                 "propertiesUi": {
                     "propertyValues": [
                         {
-                            "key": "Status|select",
-                            "selectValue": "Needs Revision"
+                            "key": "Status|text",
+                            "textValue": "Needs Revision"
                         },
                         {
                             "key": "SEO Score|number",
