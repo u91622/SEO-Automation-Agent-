@@ -15,6 +15,8 @@
    <img width="1280" height="726" alt="image" src="https://github.com/user-attachments/assets/be52c755-6f5a-48b5-8545-83fe25db0e31" />
 
 2.  **分析**: 抓取頁面內容，傳送給 AI 分析文法與 SEO。
+   <img width="1864" height="1027" alt="image" src="https://github.com/user-attachments/assets/b31143d8-38ee-406f-8401-831d69187dc1" />
+
 3.  **判定**:
     - **合格 (Score >= 80)**: Notion 狀態更新為 `Ready`，Slack 發送慶祝通知 🎉。
       <img width="1280" height="137" alt="image" src="https://github.com/user-attachments/assets/9bbc508a-6cb0-429f-9689-1a6d3c78bfae" />
