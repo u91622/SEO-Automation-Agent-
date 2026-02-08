@@ -12,10 +12,17 @@
 
 ## 功能流程
 1.  **監控**: 每分鐘檢查 Notion 指定 **資料庫 (Database)** 是否有新頁面（注意：不支援獨立 Page，必須在資料庫內）。
+   <img width="1280" height="726" alt="image" src="https://github.com/user-attachments/assets/be52c755-6f5a-48b5-8545-83fe25db0e31" />
+
 2.  **分析**: 抓取頁面內容，傳送給 AI 分析文法與 SEO。
 3.  **判定**:
     - **合格 (Score >= 80)**: Notion 狀態更新為 `Ready`，Slack 發送慶祝通知 🎉。
+      <img width="1280" height="137" alt="image" src="https://github.com/user-attachments/assets/9bbc508a-6cb0-429f-9689-1a6d3c78bfae" />
+
     - **不合格 (Score < 80)**: Notion 狀態更新為 `Needs Revision`，在頁面底部自動寫入修改建議，Slack 發送警示通知 ⚠️。
+      <img width="805" height="58" alt="image" src="https://github.com/user-attachments/assets/ec30d76a-fc22-4e25-9643-63516e80d971" />
+      <img width="1280" height="706" alt="image" src="https://github.com/user-attachments/assets/65c32c76-9ca2-4fea-b938-29c46cbeae80" />
+
 
 > [!WARNING]
 > **重要區分**: 本工作流使用 Notion 的 Database 功能來儲存「Status」與「Score」等欄位。如果您只是建立一個獨立的 Page，n8n 的 Trigger 是抓不到的。請務必在一個 **Database** 中建立頁面。
